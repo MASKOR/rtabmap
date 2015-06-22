@@ -373,4 +373,125 @@ void Signature::uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::
 	}
 }
 
+// #################################################
+// ## FOLLOWING CODE IS // ADDED
+// #################################################
+
+//SensorData Signature::toSensorData_extended()
+//{
+//    this->uncompressData_extended();
+//    float rotVariance = 1.0f;
+//    float transVariance = 1.0f;
+//    this->getPoseVariance(rotVariance, transVariance);
+
+//    return SensorData(_thermalRaw,
+//                      _laserScanRaw,
+//                      _laserScanMaxPts,
+//                      _imageRaw,
+//                      _depthRaw,
+//                      _fx,
+//                      _fy,
+//                      _cx,
+//                      _cy,
+//                      _localTransform,
+//                      _pose,
+//                      rotVariance,
+//                      transVariance,
+//                      _id,
+//                      _stamp,
+//                      _userData);
+//}
+
+//void Signature::uncompressData_extended()
+//{
+//    uncompressData_extended(&_imageRaw, &_depthRaw, &_laserScanRaw, &_thermalRaw);
+//}
+
+//void Signature::uncompressData_extended(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * thermalRaw)
+//{
+//    uncompressDataConst_extended(imageRaw, depthRaw, laserScanRaw, thermalRaw);
+//    if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
+//    {
+//        _imageRaw = *imageRaw;
+//    }
+//    if(depthRaw && !depthRaw->empty() && _depthRaw.empty())
+//    {
+//        _depthRaw = *depthRaw;
+//    }
+//    if(laserScanRaw && !laserScanRaw->empty() && _laserScanRaw.empty())
+//    {
+//        _laserScanRaw = *laserScanRaw;
+//    }
+//    if(thermalRaw && !thermalRaw->empty() && _thermalRaw.empty())
+//    {
+//        _thermalRaw = *thermalRaw;
+//    }
+//}
+
+//void Signature::uncompressDataConst_extended(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * thermalRaw) const
+//{
+//    if(imageRaw)
+//    {
+//        *imageRaw = _imageRaw;
+//    }
+//    if(depthRaw)
+//    {
+//        *depthRaw = _depthRaw;
+//    }
+//    if(laserScanRaw)
+//    {
+//        *laserScanRaw = _laserScanRaw;
+//    }
+//    if(thermalRaw)
+//    {
+//        *thermalRaw = _thermalRaw;
+//    }
+//    if( (imageRaw && imageRaw->empty()) ||
+//        (depthRaw && depthRaw->empty()) ||
+//        (thermalRaw && thermalRaw->empty()) ||
+//        (laserScanRaw && laserScanRaw->empty()))
+//    {
+//        rtabmap::CompressionThread ctImage(_imageCompressed, true);
+//        rtabmap::CompressionThread ctDepth(_depthCompressed, true);
+//        rtabmap::CompressionThread ctThermal(_thermalCompressed, true);
+//        rtabmap::CompressionThread ctLaserScan(_laserScanCompressed, false);
+//        if(imageRaw && imageRaw->empty())
+//        {
+//            ctImage.start();
+//        }
+//        if(depthRaw && depthRaw->empty())
+//        {
+//            ctDepth.start();
+//        }
+//        if(laserScanRaw && laserScanRaw->empty())
+//        {
+//            ctLaserScan.start();
+//        }
+//        if(thermalRaw && thermalRaw->empty())
+//        {
+//            ctThermal.start();
+//        }
+//        ctImage.join();
+//        ctDepth.join();
+//        ctLaserScan.join();
+//        ctThermal.join();
+//        if(imageRaw && imageRaw->empty())
+//        {
+//            *imageRaw = ctImage.getUncompressedData();
+//        }
+//        if(depthRaw && depthRaw->empty())
+//        {
+//            *depthRaw = ctDepth.getUncompressedData();
+//        }
+//        if(laserScanRaw && laserScanRaw->empty())
+//        {
+//            *laserScanRaw = ctLaserScan.getUncompressedData();
+//        }
+//        if(thermalRaw && thermalRaw->empty())
+//        {
+//            *thermalRaw = ctThermal.getUncompressedData();
+//        }
+//    }
+//}
+
 } //namespace rtabmap

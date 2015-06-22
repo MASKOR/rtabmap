@@ -35,7 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
 #include <opencv2/core/core.hpp>
-#include <map>
 #include <list>
 
 namespace rtabmap

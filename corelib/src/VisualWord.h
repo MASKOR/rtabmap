@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
 #include <opencv2/core/core.hpp>
-#include <map>
 
 namespace rtabmap
 {

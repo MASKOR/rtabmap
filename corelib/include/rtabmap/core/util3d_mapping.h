@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h"
 
 #include <opencv2/core/core.hpp>
-#include <map>
 #include <rtabmap/core/Transform.h>
 #include <pcl/pcl_base.h>
 #include <pcl/point_cloud.h>

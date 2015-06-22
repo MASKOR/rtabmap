@@ -320,10 +320,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		{
 			pcl::PointXYZRGB & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 			if(!mono)
-			{
-				pt.b = imageRgb.at<cv::Vec3b>(h,w)[0];
-				pt.g = imageRgb.at<cv::Vec3b>(h,w)[1];
-				pt.r = imageRgb.at<cv::Vec3b>(h,w)[2];
+            {
+                pt.b = imageRgb.at<cv::Vec3b>(h,w)[0];
+                pt.g = imageRgb.at<cv::Vec3b>(h,w)[1];
+                pt.r = imageRgb.at<cv::Vec3b>(h,w)[2];
+//                          pt.b = 173;
+//                          pt.g = 180;
+//                          pt.r = 62;
+                          
 			}
 			else
 			{

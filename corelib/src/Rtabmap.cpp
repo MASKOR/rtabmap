@@ -184,26 +184,20 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutFloat, " 4-Likelihood time (s)\n");
 			fprintf(_foutFloat, " 5-Posterior time (s)\n");
 			fprintf(_foutFloat, " 6-Hypothesis selection time (s)\n");
-			fprintf(_foutFloat, " 7-Hypothesis validation time (s)\n");
-			fprintf(_foutFloat, " 8-Transfer time (s)\n");
-			fprintf(_foutFloat, " 9-Statistics creation time (s)\n");
-			fprintf(_foutFloat, " 10-Loop closure hypothesis value\n");
-			fprintf(_foutFloat, " 11-NAN\n");
-			fprintf(_foutFloat, " 12-NAN\n");
-			fprintf(_foutFloat, " 13-NAN\n");
-			fprintf(_foutFloat, " 14-NAN\n");
-			fprintf(_foutFloat, " 15-NAN\n");
-			fprintf(_foutFloat, " 16-Virtual place hypothesis\n");
-			fprintf(_foutFloat, " 17-Join trash time (s)\n");
-			fprintf(_foutFloat, " 18-Weight Update (rehearsal) similarity\n");
-			fprintf(_foutFloat, " 19-Empty trash time (s)\n");
-			fprintf(_foutFloat, " 20-Retrieval database access time (s)\n");
-			fprintf(_foutFloat, " 21-Add loop closure link time (s)\n");
-			fprintf(_foutFloat, " 22-Memory cleanup time (s)\n");
-			fprintf(_foutFloat, " 23-Scan matching (odometry correction) time (s)\n");
-			fprintf(_foutFloat, " 24-Local time loop closure detection time (s)\n");
-			fprintf(_foutFloat, " 25-Local space loop closure detection time (s)\n");
-			fprintf(_foutFloat, " 26-Map optimization (s)\n");
+			fprintf(_foutFloat, " 7-Transfer time (s)\n");
+			fprintf(_foutFloat, " 8-Statistics creation time (s)\n");
+			fprintf(_foutFloat, " 9-Loop closure hypothesis value\n");
+			fprintf(_foutFloat, " 10-NAN\n");
+			fprintf(_foutFloat, " 11-Maximum likelihood\n");
+			fprintf(_foutFloat, " 12-Sum likelihood\n");
+			fprintf(_foutFloat, " 13-Mean likelihood\n");
+			fprintf(_foutFloat, " 14-Std dev likelihood\n");
+			fprintf(_foutFloat, " 15-Virtual place hypothesis\n");
+			fprintf(_foutFloat, " 16-Join trash time (s)\n");
+			fprintf(_foutFloat, " 17-Weight Update (rehearsal) similarity\n");
+			fprintf(_foutFloat, " 18-Empty trash time (s)\n");
+			fprintf(_foutFloat, " 19-Retrieval database access time (s)\n");
+			fprintf(_foutFloat, " 20-Add loop closure link time (s)\n");
 		}
 		if(_statisticLoggedHeaders && addLogIHeader && _foutInt)
 		{
@@ -225,8 +219,6 @@ void Rtabmap::setupLogFiles(bool overwrite)
 			fprintf(_foutInt, " 15-Non-null likelihood values\n");
 			fprintf(_foutInt, " 16-Weight Update ID\n");
 			fprintf(_foutInt, " 17-Is last location merged through Weight Update?\n");
-			fprintf(_foutInt, " 18-Local graph size\n");
-			fprintf(_foutInt, " 19-Sensor data id\n");
 		}
 
 		ULOGGER_DEBUG("Log file (int)=%s", (_wDir+"/"+LOG_I).c_str());
@@ -1117,6 +1109,7 @@ bool Rtabmap::process(const SensorData & data)
 				weights = _memory->getWeights();
 			}
 
+			timer.start();
 			//============================================================
 			// Select the highest hypothesis
 			//============================================================
@@ -1955,6 +1948,9 @@ bool Rtabmap::process(const SensorData & data)
 		}
 	}
 
+	timeMapOptimization = timer.ticks();
+	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
+
 	//============================================================
 	// Add virtual links if a path is activated
 	//============================================================
@@ -1972,9 +1968,6 @@ bool Rtabmap::process(const SensorData & data)
 			}
 		}
 	}
-
-	timeMapOptimization = timer.ticks();
-	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
 
 	//============================================================
 	// Prepare statistics
@@ -2134,6 +2127,8 @@ bool Rtabmap::process(const SensorData & data)
 	//By default, remove all signatures with a loop closure link if they are not in reactivateIds
 	//This will also remove rehearsed signatures
 	std::list<int> signaturesRemoved = _memory->cleanup();
+	timeMemoryCleanup = timer.ticks();
+	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
 
 	// If this option activated, add new nodes only if there are linked with a previous map.
 	// Used when rtabmap is first started, it will wait a
@@ -2159,9 +2154,6 @@ bool Rtabmap::process(const SensorData & data)
 		_memory->deleteLocation(signature->id());
 	}
 
-	timeMemoryCleanup = timer.ticks();
-	ULOGGER_INFO("timeMemoryCleanup = %fs... %d signatures removed", timeMemoryCleanup, (int)signaturesRemoved.size());
-
 	// Pass this point signature should not be used, since it could have been transferred...
 	signature = 0;
 
@@ -2175,6 +2167,7 @@ bool Rtabmap::process(const SensorData & data)
 	//============================================================
 	double totalTime = timerTotal.ticks();
 	ULOGGER_INFO("Total time processing = %fs...", totalTime);
+	timer.start();
 	if((_maxTimeAllowed != 0 && totalTime*1000>_maxTimeAllowed) ||
 		(_maxMemoryAllowed != 0 && _memory->getWorkingMem().size() > _maxMemoryAllowed))
 	{
@@ -2285,7 +2278,7 @@ bool Rtabmap::process(const SensorData & data)
 	// TODO : use a specific class which will handle the RtabmapEvent
 	if(_foutFloat && _foutInt)
 	{
-		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 									totalTime,
 									timeMemoryUpdate,
 									timeReactivations,
@@ -2306,12 +2299,7 @@ bool Rtabmap::process(const SensorData & data)
 									rehearsalValue,
 									timeEmptyingTrash,
 									timeRetrievalDbAccess,
-									timeAddLoopClosureLink,
-									timeMemoryCleanup,
-									timeScanMatching,
-									timeLocalTimeDetection,
-									timeLocalSpaceDetection,
-									timeMapOptimization);
+									timeAddLoopClosureLink);
 		std::string logI = uFormat("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
 									_loopClosureHypothesis.first,
 									_highestHypothesis.first,
@@ -2582,16 +2570,17 @@ void Rtabmap::optimizeCurrentMap(
 {
 	//Optimize the map
 	optimizedPoses.clear();
-	UINFO("Optimize map: around location %d", id);
+	UDEBUG("Optimize map: around location %d", id);
 	if(_memory && id > 0)
 	{
 		UTimer timer;
 		std::map<int, int> ids = _memory->getNeighborsId(id, 0, lookInDatabase?-1:0, true);
+		UDEBUG("get ids=%d", (int)ids.size());
 		if(!_optimizeFromGraphEnd && ids.size() > 1)
 		{
 			id = ids.begin()->first;
 		}
-		UINFO("get %d ids time %f s", (int)ids.size(), timer.ticks());
+		UINFO("get ids time %f s", timer.ticks());
 
 		optimizedPoses = Rtabmap::optimizeGraph(id, uKeysSet(ids), lookInDatabase, constraints);
 
@@ -2616,7 +2605,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	std::multimap<int, Link> edgeConstraints;
 	UDEBUG("ids=%d", (int)ids.size());
 	_memory->getMetricConstraints(ids, poses, edgeConstraints, lookInDatabase);
-	UINFO("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
+	UDEBUG("get constraints (%d poses, %d edges) time %f s", (int)poses.size(), (int)edgeConstraints.size(), timer.ticks());
 
 	if(constraints)
 	{
@@ -2633,7 +2622,6 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	{
 		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints);
 	}
-	UINFO("Optimization time %f s", timer.ticks());
 
 	return optimizedPoses;
 }
@@ -2829,8 +2817,7 @@ void Rtabmap::getGraph(
 		std::map<int, std::string> & labels,
 		std::map<int, std::vector<unsigned char> > & userDatas,
 		bool optimized,
-		bool global,
-		bool posesConstraintsOnly)
+		bool global)
 {
 	if(_memory && _memory->getLastWorkingSignature())
 	{
@@ -2853,22 +2840,19 @@ void Rtabmap::getGraph(
 			_memory->getMetricConstraints(uKeysSet(ids), poses, constraints, global);
 		}
 
-		if(!posesConstraintsOnly)
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				Transform odomPose;
-				int weight = -1;
-				int mapId = -1;
-				std::string label;
-				double stamp = 0;
-				std::vector<unsigned char> userData;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, global);
-				mapIds.insert(std::make_pair(iter->first, mapId));
-				stamps.insert(std::make_pair(iter->first, stamp));
-				labels.insert(std::make_pair(iter->first, label));
-				userDatas.insert(std::make_pair(iter->first, userData));
-			}
+			Transform odomPose;
+			int weight = -1;
+			int mapId = -1;
+			std::string label;
+			double stamp = 0;
+			std::vector<unsigned char> userData;
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
+			mapIds.insert(std::make_pair(iter->first, mapId));
+			stamps.insert(std::make_pair(iter->first, stamp));
+			labels.insert(std::make_pair(iter->first, label));
+			userDatas.insert(std::make_pair(iter->first, userData));
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size()))
@@ -3007,7 +2991,6 @@ bool Rtabmap::computePath(
 // return true if path is updated
 bool Rtabmap::computePath(int targetNode, bool global)
 {
-	UINFO("Planning a path to node %d (global=%d)", targetNode, global?1:0);
 	this->clearPath();
 
 	if(!_rgbdSlamMode)
@@ -3016,7 +2999,6 @@ bool Rtabmap::computePath(int targetNode, bool global)
 		return false;
 	}
 
-	UTimer totalTimer;
 	UTimer timer;
 	std::map<int, Transform> nodes;
 	std::multimap<int, Link> constraints;
@@ -3024,23 +3006,20 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
 	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global, true);
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	if(computePath(targetNode, nodes, constraints))
 	{
 		updateGoalIndex();
 	}
-	UINFO("Time computing path (A*) = %fs", timer.ticks());
-	UINFO("Total planning time = %fs (%d nodes, %f m long)", totalTimer.ticks(), (int)_path.size(), graph::computePathLength(_path));
+	UINFO("Time computing path = %fs", timer.ticks());
 
 	return _path.size()>0;
 }
 
 bool Rtabmap::computePath(const Transform & targetPose, bool global)
 {
-	UINFO("Planning a path to pose %s (global=%d)", targetPose.prettyPrint().c_str(), global?1:0);
-
 	this->clearPath();
 	std::list<std::pair<int, Transform> > pathPoses;
 
@@ -3058,7 +3037,7 @@ bool Rtabmap::computePath(const Transform & targetPose, bool global)
 	std::map<int, double> stamps;
 	std::map<int, std::string> labels;
 	std::map<int, std::vector<unsigned char> > userDatas;
-	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global, true);
+	this->getGraph(nodes, constraints, mapIds, stamps, labels, userDatas, true, global);
 	UINFO("Time creating graph (global=%s) = %fs", global?"true":"false", timer.ticks());
 
 	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);

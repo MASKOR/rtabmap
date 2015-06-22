@@ -58,8 +58,7 @@ cv::Mat disparityFromStereoImages(
 	{
 		leftMono = leftImage;
 	}
-	cv::Mat disparity;
-#if CV_MAJOR_VERSION < 3
+
 	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET);
 	stereo.state->SADWindowSize = 15;
 	stereo.state->minDisparity = 0;
@@ -70,20 +69,8 @@ cv::Mat disparityFromStereoImages(
 	stereo.state->textureThreshold = 10;
 	stereo.state->speckleWindowSize = 100;
 	stereo.state->speckleRange = 4;
+	cv::Mat disparity;
 	stereo(leftMono, rightImage, disparity, CV_16SC1);
-#else
-	cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
-	stereo->setBlockSize(15);
-	stereo->setMinDisparity(0);
-	stereo->setNumDisparities(64);
-	stereo->setPreFilterSize(9);
-	stereo->setPreFilterCap(31);
-	stereo->setUniquenessRatio(15);
-	stereo->setTextureThreshold(10);
-	stereo->setSpeckleWindowSize(100);
-	stereo->setSpeckleRange(4);
-	stereo->compute(leftMono, rightImage, disparity);
-#endif
 	return disparity;
 }
 
@@ -241,7 +228,7 @@ float getDepth(
 	int u_end = std::min(u+1, depthImage.cols-1);
 	int v_end = std::min(v+1, depthImage.rows-1);
 
-	float depth = isInMM?(float)depthImage.at<unsigned short>(v,u)*0.001f:depthImage.at<float>(v,u);
+	float depth = isInMM?(float)depthImage.at<uint16_t>(v,u)*0.001f:depthImage.at<float>(v,u);
 	if(depth!=0.0f && uIsFinite(depth))
 	{
 		if(smoothing)
@@ -254,7 +241,7 @@ float getDepth(
 				{
 					if(!(uu == u && vv == v))
 					{
-						float d = isInMM?(float)depthImage.at<unsigned short>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
+						float d = isInMM?(float)depthImage.at<uint16_t>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
 						// ignore if not valid or depth difference is too high
 						if(d != 0.0f && uIsFinite(d) && fabs(d - depth) < maxZError)
 						{

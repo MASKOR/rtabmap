@@ -126,6 +126,11 @@ public:
 	void setImageRaw(const cv::Mat & image) {_imageRaw = image;}
 	const cv::Mat & getImageRaw() const {return _imageRaw;}
 
+//        void setThermalCompressed(const cv::Mat & bytes) {_thermalCompressed = bytes;} // ADDED
+//        const cv::Mat & getThermalCompressed() const {return _thermalCompressed;} // ADDED
+//        void setThermalRaw(const cv::Mat & image) {_thermalRaw = image;} // ADDED
+//        const cv::Mat & getThermalRaw() const {return _thermalRaw;} // ADDED
+
 	//metric stuff
 	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
 	void setDepthCompressed(const cv::Mat & bytes, float fx, float fy, float cx, float cy);
@@ -157,6 +162,11 @@ public:
 	void uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw);
 	void uncompressDataConst(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw) const;
 
+//        SensorData toSensorData_extended(); // ADDED
+//        void uncompressData_extended(); // ADDED
+//        void uncompressData_extended(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * thermalRaw); // ADDED
+//        void uncompressDataConst_extended(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * thermalRaw) const; // ADDED
+
 private:
 	int _id;
 	int _mapId;
@@ -176,6 +186,9 @@ private:
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
 	cv::Mat _imageCompressed; // compressed image
+
+//        cv::Mat _thermalCompressed; // ADDED
+//        cv::Mat _thermalRaw; // ADDED
 
 	cv::Mat _depthCompressed; // compressed image
 	cv::Mat _laserScanCompressed; // compressed data

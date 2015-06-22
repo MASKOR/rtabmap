@@ -1126,6 +1126,7 @@ void DatabaseViewer::view3DMap()
 						}
 						else
 						{
+                                                  //std::cout << "------------------------------------------------- DatabaseViewer.cpp -------------------------------------------------" << std::endl;
 							cloud = rtabmap::util3d::cloudFromDepthRGB(
 									data.getImageRaw(),
 									data.getDepthRaw(),

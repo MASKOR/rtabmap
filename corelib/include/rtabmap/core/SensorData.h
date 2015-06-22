@@ -77,6 +77,24 @@ public:
 		  double stamp,
 		  const std::vector<unsigned char> & userData = std::vector<unsigned char>());
 
+//    // Metric constructor + 2d laser scan + thermalImage // ADDED
+//    SensorData(const cv::Mat & thermalImage,
+//               const cv::Mat & laserScan,
+//               int laserScanMaxPts,
+//               const cv::Mat & image,
+//               const cv::Mat & depthOrRightImage,
+//               float fx,
+//               float fyOrBaseline,
+//               float cx,
+//               float cy,
+//               const Transform & localTransform,
+//               const Transform & pose,
+//               float poseRotVariance,
+//               float poseTransVariance,
+//               int id,
+//               double stamp,
+//               const std::vector<unsigned char> & userData = std::vector<unsigned char>());
+
 	virtual ~SensorData() {}
 
 	bool isValid() const {return !_image.empty();}
@@ -89,6 +107,9 @@ public:
 	void setId(int id) {_id = id;}
 	double stamp() const {return _stamp;}
 	void setStamp(double stamp) {_stamp = stamp;}
+
+//    cv::Mat thermal() const {return _thermalImage.type()==CV_8UC1?_thermalImage:cv::Mat();} // ADDED
+//    const cv::Mat & thermalImage() const {return _thermalImage;} // ADDED
 
 	bool isMetric() const {return !_depthOrRightImage.empty() || _fx != 0.0f || _fyOrBaseline != 0.0f || !_pose.isNull();}
 	void setPose(const Transform & pose, float rotVariance, float transVariance) {_pose = pose; _poseRotVariance=rotVariance; _poseTransVariance = transVariance;}
@@ -123,6 +144,8 @@ private:
 	cv::Mat _image;
 	int _id;
 	double _stamp;
+
+//    cv::Mat _thermalImage; // ADDED
 
 	// Metric stuff
 	cv::Mat _depthOrRightImage;

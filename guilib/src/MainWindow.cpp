@@ -1099,9 +1099,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->imageView_loopClosure->setImageDepth(lcDepth);
 			}
-			if(_ui->imageView_loopClosure->sceneRect().isNull())
+			if(img.rect().isValid())
 			{
-				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+				QRectF sceneRect = img.rect();
+				_ui->imageView_source->setSceneRect(sceneRect);
+				_ui->imageView_loopClosure->setSceneRect(sceneRect);
 			}
 		}
 
@@ -2261,42 +2263,30 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 
 	// Draw lines between corresponding features...
-	float scaleSource = _ui->imageView_source->viewScale();
-	float scaleLoop = _ui->imageView_loopClosure->viewScale();
-	UDEBUG("scale source=%f loop=%f", scaleSource, scaleLoop);
-	// Delta in actual window pixels
-	float sourceMarginX = (_ui->imageView_source->width()   - _ui->imageView_source->sceneRect().width()*scaleSource)/2.0f;
-	float sourceMarginY = (_ui->imageView_source->height()  - _ui->imageView_source->sceneRect().height()*scaleSource)/2.0f;
-	float loopMarginX   = (_ui->imageView_loopClosure->width()   - _ui->imageView_loopClosure->sceneRect().width()*scaleLoop)/2.0f;
-	float loopMarginY   = (_ui->imageView_loopClosure->height()  - _ui->imageView_loopClosure->sceneRect().height()*scaleLoop)/2.0f;
-
-	float deltaX = 0;
+	float scale = _ui->imageView_source->viewScale();
+	UDEBUG("scale=%f", scale);
+	float deltaX = _ui->imageView_source->width()/scale;
 	float deltaY = 0;
-
 	if(_preferencesDialog->isVerticalLayoutUsed())
 	{
-		deltaY = _ui->label_matchId->height() + _ui->imageView_source->height();
+		deltaX = 0;
+		deltaY = _ui->imageView_source->height()/scale;
+		deltaY += _ui->label_matchId->height()/scale;
 	}
-	else
-	{
-		deltaX = _ui->imageView_source->width();
-	}
-
 	for(QList<QPair<cv::Point2f, cv::Point2f> >::iterator iter = uniqueCorrespondences.begin();
 		iter!=uniqueCorrespondences.end();
 		++iter)
 	{
-
 		_ui->imageView_source->addLine(
 				iter->first.x,
 				iter->first.y,
-				(iter->second.x*scaleLoop+loopMarginX+deltaX-sourceMarginX)/scaleSource,
-				(iter->second.y*scaleLoop+loopMarginY+deltaY-sourceMarginY)/scaleSource,
+				iter->second.x+deltaX,
+				iter->second.y+deltaY,
 				Qt::cyan);
 
 		_ui->imageView_loopClosure->addLine(
-				(iter->first.x*scaleSource+sourceMarginX-deltaX-loopMarginX)/scaleLoop,
-				(iter->first.y*scaleSource+sourceMarginY-deltaY-loopMarginY)/scaleLoop,
+				iter->first.x-deltaX,
+				iter->first.y-deltaY,
 				iter->second.x,
 				iter->second.y,
 				Qt::cyan);
@@ -4855,6 +4845,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	}
 	else
 	{
+          //std::cout << "------------------------------------------------- MainWindow.cpp -------------------------------------------------" << std::endl;
 		cloud = util3d::cloudFromDepthRGB(
 				rgb,
 				depth,

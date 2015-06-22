@@ -127,11 +127,6 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	}
 }
 
-QRectF ImageView::sceneRect() const
-{
-	return _graphicsView->scene()->sceneRect();
-}
-
 bool ImageView::isImageShown() const
 {
 	return _showImage->isChecked();
@@ -774,9 +769,6 @@ void ImageView::clear()
 		_showImageDepth->setEnabled(false);
 	}
 	_imageDepth = QPixmap();
-
-	_graphicsView->scene()->setSceneRect(QRectF());
-	_graphicsView->setScene(_graphicsView->scene());
 
 	if(!_graphicsView->isVisible())
 	{
