@@ -1126,7 +1126,7 @@ void DatabaseViewer::view3DMap()
 						}
 						else
 						{
-                                                  //std::cout << "------------------------------------------------- DatabaseViewer.cpp -------------------------------------------------" << std::endl;
+                            std::cout << "------------------------------------------------- DatabaseViewer.cpp -------------------------------------------------" << std::endl;
 							cloud = rtabmap::util3d::cloudFromDepthRGB(
 									data.getImageRaw(),
 									data.getDepthRaw(),
@@ -1237,6 +1237,7 @@ void DatabaseViewer::generate3DMap()
 							}
 							else
 							{
+                                std::cout << "------------------------------------------------- DatabaseViewer.cpp  TWO-------------------------------------------------" << std::endl;
 								cloud = rtabmap::util3d::cloudFromDepthRGB(
 										data.getImageRaw(),
 										data.getDepthRaw(),
@@ -1552,6 +1553,7 @@ void DatabaseViewer::update(int value,
 					}
 					else
 					{
+                        std::cout << "------------------------------------------------- DatabaseViewer.cpp THREE-------------------------------------------------" << std::endl;
 						cloud = util3d::cloudFromDepthRGB(
 								data.getImageRaw(),
 								data.getDepthRaw(),
@@ -2073,6 +2075,7 @@ void DatabaseViewer::updateConstraintView(
 				}
 				else
 				{
+                    std::cout << "------------------------------------------------- DatabaseViewer.cpp FOUR -------------------------------------------------" << std::endl;
 					cloudFrom = rtabmap::util3d::cloudFromDepthRGB(
 							dataFrom.getImageRaw(),
 							dataFrom.getDepthRaw(),
@@ -2096,6 +2099,7 @@ void DatabaseViewer::updateConstraintView(
 				}
 				else
 				{
+                    std::cout << "------------------------------------------------- DatabaseViewer.cpp FIVE -------------------------------------------------" << std::endl;
 					cloudTo = rtabmap::util3d::cloudFromDepthRGB(
 							dataTo.getImageRaw(),
 							dataTo.getDepthRaw(),

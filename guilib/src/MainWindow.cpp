@@ -4845,7 +4845,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	}
 	else
 	{
-          //std::cout << "------------------------------------------------- MainWindow.cpp -------------------------------------------------" << std::endl;
+        std::cout << "------------------------------------------------- MainWindow.cpp -------------------------------------------------" << std::endl;
 		cloud = util3d::cloudFromDepthRGB(
 				rgb,
 				depth,

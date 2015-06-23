@@ -830,6 +830,24 @@ bool Rtabmap::process(const SensorData & data)
 	timer.start();
 	timerTotal.start();
 
+    // ##########################################
+    // ## Check if userData keeps thermal image
+    // ##########################################
+//    cv::Mat testImage = cv::Mat::zeros(data.image().rows,data.image().cols, CV_8UC1);
+//    int pixelPointer = 0;
+//    for (int y = 0; y < data.image().rows; y++)
+//    {
+//      for (int x = 0; x < data.image().cols; x++)
+//      {
+//        testImage.at<uchar>(y,x) = data.userData()[pixelPointer];
+//        pixelPointer = pixelPointer + 1;
+//      }
+//    }
+
+//    cv::imshow("testImage", testImage);
+//    cv::waitKey(30); // testet successfully !!
+
+
 	UASSERT_MSG(_memory, "RTAB-Map is not initialized!");
 	UASSERT_MSG(_bayesFilter, "RTAB-Map is not initialized!");
 	UASSERT_MSG(_graphOptimizer, "RTAB-Map is not initialized!");
