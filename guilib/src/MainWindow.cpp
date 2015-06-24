@@ -787,6 +787,27 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			   data.fyOrBaseline() > 0.0f &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
+                //std::cout << "------------------------------------------------- createCloud ONE -------------------------------------------------" << std::endl;
+
+                // ##########################################
+                // ## Check if userData keeps thermal image
+                // ##########################################
+//                cv::Mat testImage = cv::Mat::zeros(data.image().rows,data.image().cols, CV_8UC1);
+//                int pixelPointer = 0;
+//                for (int y = 0; y < data.image().rows; y++)
+//                {
+//                    for (int x = 0; x < data.image().cols; x++)
+//                    {
+//                        testImage.at<uchar>(y,x) = data.userData()[pixelPointer];
+//                       pixelPointer = pixelPointer + 1;
+//                    }
+//                }
+
+//                cv::imshow("testImage", testImage);
+//                cv::waitKey(30);
+
+                std::cout << "userData.size() = " << data.userData().size() << std::endl;
+
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				cloud = createCloud(0,
 						data.image(),
@@ -1571,6 +1592,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		iter->uncompressData(&image, &depth, 0);
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+        std::cout << "------------------------------------------------- createCloud TWO -------------------------------------------------" << std::endl;
 		cloud = createCloud(nodeId,
 				image,
 				depth,
@@ -4910,6 +4932,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 
 					if(!image.empty() && !depth.empty())
 					{
+                        std::cout << "------------------------------------------------- createCloud THREE -------------------------------------------------" << std::endl;
 						cloud = createCloud(iter->first,
 								image,
 								depth,
@@ -5013,6 +5036,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 					s.uncompressDataConst(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
+                        std::cout << "------------------------------------------------- createCloud FOUR -------------------------------------------------" << std::endl;
 						cloud =	 createCloud(iter->first,
 							image,
 							depth,

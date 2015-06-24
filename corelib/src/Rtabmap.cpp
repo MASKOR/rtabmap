@@ -2274,6 +2274,27 @@ bool Rtabmap::process(const SensorData & data)
 				double stamp = 0;
 				std::vector<unsigned char> userData;
 				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, userData, true);
+
+                //std::cout << "userData.size = " << userData.size() << std::endl; // Is filled!!! 307200
+
+                // ##########################################
+                // ## Check if userData keeps thermal image
+                // ##########################################
+//                int rows = 480, cols = 640;
+//                cv::Mat testImage = cv::Mat::zeros(rows,cols, CV_8UC1);
+//                int pixelPointer = 0;
+//                for (int y = 0; y < rows; y++)
+//                {
+//                    for (int x = 0; x < cols; x++)
+//                    {
+//                        testImage.at<uchar>(y,x) = userData[pixelPointer];
+//                        pixelPointer = pixelPointer + 1;
+//                    }
+//                }
+
+//                cv::imshow("testImage", testImage);
+//                cv::waitKey(30); //success !
+
 				mapIds.insert(std::make_pair(iter->first, mapId));
 				labels.insert(std::make_pair(iter->first, label));
 				stamps.insert(std::make_pair(iter->first, stamp));
