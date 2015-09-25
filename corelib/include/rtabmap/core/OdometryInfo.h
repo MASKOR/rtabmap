@@ -28,8 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRYINFO_H_
 #define ODOMETRYINFO_H_
 
-#include <map>
-
 namespace rtabmap {
 
 class OdometryInfo

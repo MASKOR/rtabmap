@@ -70,12 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsManager.h>
 #include "utilite/UPlot.h"
 
-#include <opencv2/opencv_modules.hpp>
-#if CV_MAJOR_VERSION < 3
-  #include <opencv2/gpu/gpu.hpp>
-#else
-  #include <opencv2/core/cuda.hpp>
-#endif
+#include <opencv2/gpu/gpu.hpp>
 
 using namespace rtabmap;
 
@@ -96,16 +91,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui = new Ui_preferencesDialog();
 	_ui->setupUi(this);
 
-	bool haveCuda = false;
-#if CV_MAJOR_VERSION < 3
-	haveCuda = cv::gpu::getCudaEnabledDeviceCount() != 0;
-#else
-	haveCuda = cv::cuda::getCudaEnabledDeviceCount() != 0;
-#ifndef HAVE_OPENCV_CUDAFEATURES2D
-	haveCuda = false;
-#endif
-#endif
-	if(!haveCuda)
+	if(cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
 		_ui->surf_checkBox_gpuVersion->setChecked(false);
 		_ui->surf_checkBox_gpuVersion->setEnabled(false);
@@ -147,27 +133,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->comboBox_dictionary_strategy->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->reextract_nn->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->odom_bin_nn->setItemData(1, 0, Qt::UserRole - 1);
-
-#if CV_MAJOR_VERSION == 3
-		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->comboBox_detector_strategy->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(0, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(1, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(3, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(4, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(5, 0, Qt::UserRole - 1);
-		_ui->odom_type->setItemData(6, 0, Qt::UserRole - 1);
-#endif
 	}
 	if(!graph::G2OOptimizer::available())
 	{

@@ -3,6 +3,7 @@
 cmake_minimum_required(VERSION 2.8.5)
 PROJECT( RTABMap )
 SET(PROJECT_PREFIX rtabmap)
+set(CMAKE_BUILD_TYPE Debug)
 
 # Catkin doesn't support multiarch library path, 
 # fix to "lib" if not set by user.
@@ -122,6 +123,11 @@ ENDIF(APPLE)
 
 ####### DEPENDENCIES #######
 FIND_PACKAGE(OpenCV REQUIRED)
+IF(OPENCV_NONFREE_FOUND)
+  SET(NONFREE 1)
+ELSE()
+  SET(NONFREE 0)
+ENDIF()
 FIND_PACKAGE(PCL 1.7 REQUIRED)
 FIND_PACKAGE(VTK REQUIRED)
 IF("${VTK_MAJOR_VERSION}" EQUAL 5)
@@ -171,10 +177,6 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
 
 
 ####### SOURCES (Projects) #######
-SET(NONFREE 0)
-IF(OPENCV_NONFREE_FOUND OR OPENCV_XFEATURES2D_FOUND)
-   SET(NONFREE 1)
-ENDIF(OPENCV_NONFREE_FOUND OR OPENCV_XFEATURES2D_FOUND)
 CONFIGURE_FILE(Version.h.in ${PROJECT_SOURCE_DIR}/corelib/include/${PROJECT_PREFIX}/core/Version.h)
 
 ADD_SUBDIRECTORY( utilite )
@@ -327,21 +329,11 @@ IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE = ${BUILD_AS_BUNDLE}")
 ENDIF(APPLE)
 
-IF(OpenCV_FOUND)
-  IF(OpenCV_VERSION_MAJOR EQUAL 2)
-    IF(OPENCV_NONFREE_FOUND)
-      MESSAGE(STATUS "  With OpenCV 2 nonfree module (SIFT/SURF) = YES")
-    ELSE()
-      MESSAGE(STATUS "  With OpenCV 2 nonfree module (SIFT/SURF) = NO (not found)")
-    ENDIF()
-  ELSE()
-    IF(OPENCV_XFEATURES2D_FOUND)
-      MESSAGE(STATUS "  With OpenCV 3 xfeatures2d module (SIFT/SURF/BRIEF/FREAK) = YES")
-    ELSE()
-      MESSAGE(STATUS "  With OpenCV 3 xfeatures2d module (SIFT/SURF/BRIEF/FREAK) = NO (not found)")
-    ENDIF()
-  ENDIF()
-ENDIF(OpenCV_FOUND)
+IF(OPENCV_NONFREE_FOUND)
+MESSAGE(STATUS "  With OpenCV nonfree module (SIFT/SURF) = YES")
+ELSE()
+MESSAGE(STATUS "  With OpenCV nonfree module (SIFT/SURF) = NO (not found)")
+ENDIF()
 
 IF(Freenect_FOUND)
 MESSAGE(STATUS "  With Freenect = YES")

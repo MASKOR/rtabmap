@@ -1229,7 +1229,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder)
 		//default registration params
 		libfreenect2::Freenect2Device::IrCameraParams depthParams = dev_->getIrCameraParams();
 		libfreenect2::Freenect2Device::ColorCameraParams colorParams = dev_->getColorCameraParams();
-		reg_ = new libfreenect2::Registration(depthParams, colorParams);
+		reg_ = new libfreenect2::Registration(&depthParams, &colorParams);
 
 		// look for calibration files
 		if(!calibrationFolder.empty())
@@ -1312,20 +1312,7 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 	if(dev_ && listener_)
 	{
 		libfreenect2::FrameMap frames;
-#ifndef LIBFREENECT2_THREADING_STDLIB
-		UDEBUG("Waiting for new frames... If it is stalled here, rtabmap should link on libusb of "
-				"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
-				"\"libfreenect2/depends/libusb/lib\"");
-		listener_->waitForNewFrame(frames);
-#else
-		if(!listener_->waitForNewFrame(frames, 1000))
-		{
-			UWARN("CameraFreenect2: Failed to get frames! rtabmap should link on libusb of "
-					"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
-					"\"libfreenect2/depends/libusb/lib\"");
-		}
-		else
-#endif
+		if(listener_->waitForNewFrame(frames, 1000))
 		{
 			libfreenect2::Frame *rgbFrame = 0;
 			libfreenect2::Frame *irFrame = 0;
@@ -1391,9 +1378,7 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 			{
 				//rgb + ir or rgb + depth
 
-				cv::Mat rgbMatC4(rgbFrame->height, rgbFrame->width, CV_8UC4, rgbFrame->data);
-				cv::Mat rgbMat; // rtabmap uses 3 channels RGB
-				cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR);
+				cv::Mat rgbMat(rgbFrame->height, rgbFrame->width, CV_8UC3, rgbFrame->data);
 				cv::flip(rgbMat, rgb, 1);
 
 				if(stereoModel_.isValid())
@@ -1518,6 +1503,12 @@ void CameraFreenect2::captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, f
 				}
 			}
 			listener_->release(frames);
+		}
+		else
+		{
+			UWARN("CameraFreenect2: Failed to get frames! rtabmap should link on libusb of "
+					"libfreenect2, this can be done by setting LD_LIBRARY_PATH to "
+					"\"libfreenect2/depends/libusb/lib\"");
 		}
 	}
 #else

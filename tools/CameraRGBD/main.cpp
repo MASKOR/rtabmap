@@ -185,6 +185,7 @@ int main(int argc, char * argv[])
 
 			if(rgb.cols == depth.cols && rgb.rows == depth.rows && fx && fy)
 			{
+                std::cout << "------------------------------------------------- tools/CameraRGBD/main.cpp -------------------------------------------------" << std::endl;
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(rgb, depth, cx, cy, fx, fy);
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer.showCloud(cloud, "cloud");

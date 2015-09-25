@@ -131,7 +131,8 @@ protected slots:
 			   !data.depth().empty() &&
 			   data.fx() > 0.0f &&
 			   data.fy() > 0.0f)
-			{
+                        {
+                                std::cout << "------------------------------------------------- RGBDMapping/MapBuilder.h -------------------------------------------------" << std::endl;
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 					data.image(),
 					data.depth(),
@@ -202,6 +203,7 @@ protected slots:
 					Signature s = stats.getSignature();
 					s.uncompressData(); // make sure data is uncompressed
 					// Add the new cloud
+                                        std::cout << "------------------------------------------------- RGBDMapping/MapBuilder.h TWO-------------------------------------------------" << std::endl;
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
 							s.getImageRaw(),
 							s.getDepthRaw(),

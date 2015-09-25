@@ -197,6 +197,7 @@ void OdometryViewer::processData(const rtabmap::SensorData & data, const rtabmap
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		if(!data.depth().empty())
 		{
+            std::cout << "------------------------------------------------- OdometryViewer.cpp -------------------------------------------------" << std::endl;
 			cloud = util3d::cloudFromDepthRGB(
 					data.image(),
 					data.depth(),

@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/utilite/ULogger.h"
 #include <rtabmap/utilite/UMath.h>
+#include <iostream>
 
 namespace rtabmap
 {
@@ -70,6 +71,7 @@ SensorData::SensorData(const cv::Mat & image,
 	UASSERT(image.empty() ||
 			image.type() == CV_8UC1 || // Mono
 			image.type() == CV_8UC3);  // RGB
+    //std::cout << "SensorData pure constructor" << std::endl;
 }
 
 	// Metric constructor
@@ -109,7 +111,8 @@ SensorData::SensorData(const cv::Mat & image,
 			depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
 			depthOrRightImage.type() == CV_8U);     // Right stereo image
 	UASSERT(!_localTransform.isNull());
-	UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+    UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+    //std::cout << "Metric constructor" << std::endl;
 }
 
 	// Metric constructor + 2d depth
@@ -153,8 +156,58 @@ SensorData::SensorData(const cv::Mat & laserScan,
 			depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
 			depthOrRightImage.type() == CV_8U);     // Right stereo image
 	UASSERT(!_localTransform.isNull());
-	UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+    UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+    //std::cout << "Metric constructor + 2d depth" << std::endl;
 }
+
+//// Metric constructor + 2d depth + thermalImage //ADDED
+//SensorData::SensorData(const cv::Mat & thermalImage,
+//                       const cv::Mat & laserScan,
+//                       int laserScanMaxPts,
+//                       const cv::Mat & image,
+//                       const cv::Mat & depthOrRightImage,
+//                       float fx,
+//                       float fyOrBaseline,
+//                       float cx,
+//                       float cy,
+//                       const Transform & localTransform,
+//                       const Transform & pose,
+//                       float poseRotVariance,
+//                       float poseTransVariance,
+//                       int id,
+//                       double stamp,
+//                       const std::vector<unsigned char> & userData) :
+//    _thermalImage(thermalImage),
+//    _image(image),
+//    _id(id),
+//    _stamp(stamp),
+//    _depthOrRightImage(depthOrRightImage),
+//    _laserScan(laserScan),
+//    _fx(fx),
+//    _fyOrBaseline(fyOrBaseline),
+//    _cx(cx),
+//    _cy(cy),
+//    _pose(pose),
+//    _localTransform(localTransform),
+//    _poseRotVariance(poseRotVariance),
+//    _poseTransVariance(poseTransVariance),
+//    _laserScanMaxPts(laserScanMaxPts),
+//    _userData(userData)
+//{
+//    UASSERT(_laserScan.empty() || _laserScan.type() == CV_32FC2);
+//    UASSERT(image.empty() ||
+//            image.type() == CV_8UC1 || // Mono
+//            image.type() == CV_8UC3);  // RGB
+//    UASSERT(thermalImage.empty() ||
+//            thermalImage.type() == CV_8UC1);// Mono
+//    UASSERT(depthOrRightImage.empty() ||
+//            depthOrRightImage.type() == CV_32FC1 || // Depth in meter
+//            depthOrRightImage.type() == CV_16UC1 || // Depth in millimetre
+//            depthOrRightImage.type() == CV_8U);     // Right stereo image
+//    UASSERT(!_localTransform.isNull());
+//    UASSERT_MSG(uIsFinite(_poseRotVariance) && _poseRotVariance>0 && uIsFinite(_poseTransVariance) && _poseTransVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
+//    //std::cout << "Metric constructor + 2d depth + thermalImage " << std::endl;
+//}
 
 bool SensorData::empty() const
 {

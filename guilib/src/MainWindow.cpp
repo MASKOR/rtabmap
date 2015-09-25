@@ -787,6 +787,27 @@ void MainWindow::processOdometry(const rtabmap::SensorData & data, const rtabmap
 			   data.fyOrBaseline() > 0.0f &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
+                //std::cout << "------------------------------------------------- createCloud ONE -------------------------------------------------" << std::endl;
+
+                // ##########################################
+                // ## Check if userData keeps thermal image
+                // ##########################################
+//                cv::Mat testImage = cv::Mat::zeros(data.image().rows,data.image().cols, CV_8UC1);
+//                int pixelPointer = 0;
+//                for (int y = 0; y < data.image().rows; y++)
+//                {
+//                    for (int x = 0; x < data.image().cols; x++)
+//                    {
+//                        testImage.at<uchar>(y,x) = data.userData()[pixelPointer];
+//                       pixelPointer = pixelPointer + 1;
+//                    }
+//                }
+
+//                cv::imshow("testImage", testImage);
+//                cv::waitKey(30);
+
+                std::cout << "userData.size() = " << data.userData().size() << std::endl;
+
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 				cloud = createCloud(0,
 						data.image(),
@@ -1099,9 +1120,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->imageView_loopClosure->setImageDepth(lcDepth);
 			}
-			if(_ui->imageView_loopClosure->sceneRect().isNull())
+			if(img.rect().isValid())
 			{
-				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+				QRectF sceneRect = img.rect();
+				_ui->imageView_source->setSceneRect(sceneRect);
+				_ui->imageView_loopClosure->setSceneRect(sceneRect);
 			}
 		}
 
@@ -1569,6 +1592,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		iter->uncompressData(&image, &depth, 0);
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+        std::cout << "------------------------------------------------- createCloud TWO -------------------------------------------------" << std::endl;
 		cloud = createCloud(nodeId,
 				image,
 				depth,
@@ -2261,42 +2285,30 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	}
 
 	// Draw lines between corresponding features...
-	float scaleSource = _ui->imageView_source->viewScale();
-	float scaleLoop = _ui->imageView_loopClosure->viewScale();
-	UDEBUG("scale source=%f loop=%f", scaleSource, scaleLoop);
-	// Delta in actual window pixels
-	float sourceMarginX = (_ui->imageView_source->width()   - _ui->imageView_source->sceneRect().width()*scaleSource)/2.0f;
-	float sourceMarginY = (_ui->imageView_source->height()  - _ui->imageView_source->sceneRect().height()*scaleSource)/2.0f;
-	float loopMarginX   = (_ui->imageView_loopClosure->width()   - _ui->imageView_loopClosure->sceneRect().width()*scaleLoop)/2.0f;
-	float loopMarginY   = (_ui->imageView_loopClosure->height()  - _ui->imageView_loopClosure->sceneRect().height()*scaleLoop)/2.0f;
-
-	float deltaX = 0;
+	float scale = _ui->imageView_source->viewScale();
+	UDEBUG("scale=%f", scale);
+	float deltaX = _ui->imageView_source->width()/scale;
 	float deltaY = 0;
-
 	if(_preferencesDialog->isVerticalLayoutUsed())
 	{
-		deltaY = _ui->label_matchId->height() + _ui->imageView_source->height();
+		deltaX = 0;
+		deltaY = _ui->imageView_source->height()/scale;
+		deltaY += _ui->label_matchId->height()/scale;
 	}
-	else
-	{
-		deltaX = _ui->imageView_source->width();
-	}
-
 	for(QList<QPair<cv::Point2f, cv::Point2f> >::iterator iter = uniqueCorrespondences.begin();
 		iter!=uniqueCorrespondences.end();
 		++iter)
 	{
-
 		_ui->imageView_source->addLine(
 				iter->first.x,
 				iter->first.y,
-				(iter->second.x*scaleLoop+loopMarginX+deltaX-sourceMarginX)/scaleSource,
-				(iter->second.y*scaleLoop+loopMarginY+deltaY-sourceMarginY)/scaleSource,
+				iter->second.x+deltaX,
+				iter->second.y+deltaY,
 				Qt::cyan);
 
 		_ui->imageView_loopClosure->addLine(
-				(iter->first.x*scaleSource+sourceMarginX-deltaX-loopMarginX)/scaleLoop,
-				(iter->first.y*scaleSource+sourceMarginY-deltaY-loopMarginY)/scaleLoop,
+				iter->first.x-deltaX,
+				iter->first.y-deltaY,
 				iter->second.x,
 				iter->second.y,
 				Qt::cyan);
@@ -4855,6 +4867,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::createCloud(
 	}
 	else
 	{
+        std::cout << "------------------------------------------------- MainWindow.cpp -------------------------------------------------" << std::endl;
 		cloud = util3d::cloudFromDepthRGB(
 				rgb,
 				depth,
@@ -4919,6 +4932,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MainWindow::getAssembledCloud(
 
 					if(!image.empty() && !depth.empty())
 					{
+                        std::cout << "------------------------------------------------- createCloud THREE -------------------------------------------------" << std::endl;
 						cloud = createCloud(iter->first,
 								image,
 								depth,
@@ -5022,6 +5036,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 					s.uncompressDataConst(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
+                        std::cout << "------------------------------------------------- createCloud FOUR -------------------------------------------------" << std::endl;
 						cloud =	 createCloud(iter->first,
 							image,
 							depth,

@@ -77,7 +77,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		int samples = 0;
 
 		if(!ui_->checkBox_rawCloud->isChecked())
-		{			decimation = decimation_;
+		{			decimation = decimation_;
 			maxDepth = maxDepth_;
 			samples = samples_;
 		}
@@ -118,6 +118,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			}
 			else
 			{
+                std::cout << "------------------------------------------------- LoopClosureViewer.cpp -------------------------------------------------" << std::endl;
 				cloudA = util3d::cloudFromDepthRGB(
 						sA_.getImageRaw(),
 						sA_.getDepthRaw(),
@@ -150,6 +151,7 @@ void LoopClosureViewer::updateView(const Transform & transform)
 			}
 			else
 			{
+                std::cout << "------------------------------------------------- LoopClosureViewer.cpp TWO -------------------------------------------------" << std::endl;
 				cloudB = util3d::cloudFromDepthRGB(
 						sB_.getImageRaw(),
 						sB_.getDepthRaw(),

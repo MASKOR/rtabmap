@@ -80,6 +80,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
 	if(!data.depth().empty() && data.fx() && data.fy())
 	{
+        std::cout << "------------------------------------------------- CameraViewer.cpp -------------------------------------------------" << std::endl;
 		cloudView_->addOrUpdateCloud("cloud",
 				util3d::cloudFromDepthRGB(data.image(), data.depth(), data.cx(), data.cy(), data.fx(), data.fy()),
 				data.localTransform());

@@ -34,25 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include <opencv2/imgproc/imgproc_c.h>
-#include <opencv2/core/version.hpp>
-#include <opencv2/opencv_modules.hpp>
-
-#if CV_MAJOR_VERSION < 3
 #include <opencv2/gpu/gpu.hpp>
-#else
-#include <opencv2/core/cuda.hpp>
-#endif
+#include <opencv2/core/version.hpp>
 
-#ifdef HAVE_OPENCV_NONFREE
-  #if CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >=4
-  #include <opencv2/nonfree/gpu.hpp>
-  #include <opencv2/nonfree/features2d.hpp>
-  #endif
+#if RTABMAP_NONFREE == 1
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
+#include <opencv2/nonfree/gpu.hpp>
+#include <opencv2/nonfree/features2d.hpp>
 #endif
-#ifdef HAVE_OPENCV_XFEATURES2D
-  #include <opencv2/xfeatures2d.hpp>
-  #include <opencv2/xfeatures2d/nonfree.hpp>
-  #include <opencv2/xfeatures2d/cuda.hpp>
 #endif
 
 namespace rtabmap {
@@ -341,29 +330,12 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 }
 Feature2D * Feature2D::create(Feature2D::Type & type, const ParametersMap & parameters)
 {
-	if(RTABMAP_NONFREE == 0)
+	if(RTABMAP_NONFREE == 0 &&
+	   (type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift))
 	{
-		if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
-		{
-#if CV_MAJOR_VERSION < 3
-			UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
-#else
-			UWARN("SURF/SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
-#endif
-			type = Feature2D::kFeatureOrb;
-		}
-#if CV_MAJOR_VERSION == 3
-		if(type == Feature2D::kFeatureFastBrief ||
-		   type == Feature2D::kFeatureFastFreak ||
-		   type == Feature2D::kFeatureGfttBrief ||
-		   type == Feature2D::kFeatureGfttFreak)
-		{
-			UWARN("BRIEF/FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
-			type = Feature2D::kFeatureOrb;
-		}
-#endif
+		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		type = Feature2D::kFeatureOrb;
 	}
-
 	Feature2D * feature2D = 0;
 	switch(type)
 	{
@@ -460,13 +432,25 @@ SURF::SURF(const ParametersMap & parameters) :
 		extended_(Parameters::defaultSURFExtended()),
 		upright_(Parameters::defaultSURFUpright()),
 		gpuKeypointsRatio_(Parameters::defaultSURFGpuKeypointsRatio()),
-		gpuVersion_(Parameters::defaultSURFGpuVersion())
+		gpuVersion_(Parameters::defaultSURFGpuVersion()),
+		_surf(0),
+		_gpuSurf(0)
 {
 	parseParameters(parameters);
 }
 
 SURF::~SURF()
 {
+#if RTABMAP_NONFREE == 1
+	if(_surf)
+	{
+		delete _surf;
+	}
+	if(_gpuSurf)
+	{
+		delete _gpuSurf;
+	}
+#endif
 }
 
 void SURF::parseParameters(const ParametersMap & parameters)
@@ -482,30 +466,29 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion_);
 
 #if RTABMAP_NONFREE == 1
-#if CV_MAJOR_VERSION < 3
-	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(_gpuSurf)
 	{
-		UWARN("GPU version of SURF not available! Using CPU version instead...");
-		gpuVersion_ = false;
+		delete _gpuSurf;
+		_gpuSurf = 0;
 	}
-#else
-	if(gpuVersion_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(_surf)
 	{
-		UWARN("GPU version of SURF not available! Using CPU version instead...");
-		gpuVersion_ = false;
+		delete _surf;
+		_surf = 0;
 	}
-#endif
-	if(gpuVersion_)
+
+	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount())
 	{
-		_gpuSurf = cv::Ptr<CV_SURF_GPU>(new CV_SURF_GPU(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, gpuKeypointsRatio_, upright_));
+		_gpuSurf = new cv::gpu::SURF_GPU(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, gpuKeypointsRatio_, upright_);
 	}
 	else
 	{
-#if CV_MAJOR_VERSION < 3
-		_surf = cv::Ptr<CV_SURF>(new CV_SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_));
-#else
-		_surf = CV_SURF::create(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
-#endif
+		if(gpuVersion_)
+		{
+			UWARN("GPU version of SURF not available! Using CPU version instead...");
+		}
+
+		_surf = new cv::SURF(hessianThreshold_, nOctaves_, nOctaveLayers_, extended_, upright_);
 	}
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SURF cannot be used!");
@@ -519,15 +502,10 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 
 #if RTABMAP_NONFREE == 1
 	cv::Mat imgRoi(image, roi);
-	if(gpuVersion_)
+	if(_gpuSurf)
 	{
-#if CV_MAJOR_VERSION < 3
 		cv::gpu::GpuMat imgGpu(imgRoi);
-		(*_gpuSurf.obj)(imgGpu, cv::gpu::GpuMat(), keypoints);
-#else
-		cv::cuda::GpuMat imgGpu(imgRoi);
-		(*_gpuSurf.get())(imgGpu, cv::cuda::GpuMat(), keypoints);
-#endif
+		(*_gpuSurf)(imgGpu, cv::gpu::GpuMat(), keypoints);
 	}
 	else
 	{
@@ -544,17 +522,11 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
 #if RTABMAP_NONFREE == 1
-	if(gpuVersion_)
+	if(_gpuSurf)
 	{
-#if CV_MAJOR_VERSION < 3
 		cv::gpu::GpuMat imgGpu(image);
 		cv::gpu::GpuMat descriptorsGPU;
-		(*_gpuSurf.obj)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU, true);
-#else
-		cv::cuda::GpuMat imgGpu(image);
-		cv::cuda::GpuMat descriptorsGPU;
-		(*_gpuSurf.get())(imgGpu, cv::cuda::GpuMat(), keypoints, descriptorsGPU, true);
-#endif
+		(*_gpuSurf)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU, true);
 
 		// Download descriptors
 		if (descriptorsGPU.empty())
@@ -585,13 +557,22 @@ SIFT::SIFT(const ParametersMap & parameters) :
 	nOctaveLayers_(Parameters::defaultSIFTNOctaveLayers()),
 	contrastThreshold_(Parameters::defaultSIFTContrastThreshold()),
 	edgeThreshold_(Parameters::defaultSIFTEdgeThreshold()),
-	sigma_(Parameters::defaultSIFTSigma())
+	sigma_(Parameters::defaultSIFTSigma()),
+	_sift(0)
 {
 	parseParameters(parameters);
 }
 
 SIFT::~SIFT()
 {
+#if RTABMAP_NONFREE == 1
+	if(_sift)
+	{
+		delete _sift;
+	}
+#else
+	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
+#endif
 }
 
 void SIFT::parseParameters(const ParametersMap & parameters)
@@ -605,11 +586,13 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
 #if RTABMAP_NONFREE == 1
-#if CV_MAJOR_VERSION < 3
-	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
-#else
-	_sift = CV_SIFT::create(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
-#endif
+	if(_sift)
+	{
+		delete _sift;
+		_sift = 0;
+	}
+
+	_sift = new cv::SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
 #endif
@@ -654,13 +637,23 @@ ORB::ORB(const ParametersMap & parameters) :
 		patchSize_(Parameters::defaultORBPatchSize()),
 		gpu_(Parameters::defaultORBGpu()),
 		fastThreshold_(Parameters::defaultFASTThreshold()),
-		nonmaxSuppresion_(Parameters::defaultFASTNonmaxSuppression())
+		nonmaxSuppresion_(Parameters::defaultFASTNonmaxSuppression()),
+		_orb(0),
+		_gpuOrb(0)
 {
 	parseParameters(parameters);
 }
 
 ORB::~ORB()
 {
+	if(_orb)
+	{
+		delete _orb;
+	}
+	if(_gpuOrb)
+	{
+		delete _gpuOrb;
+	}
 }
 
 void ORB::parseParameters(const ParametersMap & parameters)
@@ -680,44 +673,29 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTThreshold(), fastThreshold_);
 	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppresion_);
 
-#if CV_MAJOR_VERSION < 3
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(_gpuOrb)
 	{
-		UWARN("GPU version of ORB not available! Using CPU version instead...");
-		gpu_ = false;
+		delete _gpuOrb;
+		_gpuOrb = 0;
 	}
-#else
-#ifndef HAVE_OPENCV_CUDAFEATURES2D
-	if(gpu_)
+	if(_orb)
 	{
-		UWARN("GPU version of ORB not available (OpenCV cudafeatures2d module)! Using CPU version instead...");
-		gpu_ = false;
+		delete _orb;
+		_orb = 0;
 	}
-#endif
-	if(gpu_)
+
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount())
 	{
-		UWARN("GPU version of ORB available but not implemented yet! Using CPU version instead...");
-	}
-	gpu_ = false;
-#endif
-	if(gpu_)
-	{
-#if CV_MAJOR_VERSION < 3
-		_gpuOrb = cv::Ptr<CV_ORB_GPU>(new CV_ORB_GPU(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
+		_gpuOrb = new cv::gpu::ORB_GPU(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
 		_gpuOrb->setFastParams(fastThreshold_, nonmaxSuppresion_);
-#else
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
 	}
 	else
 	{
-#if CV_MAJOR_VERSION < 3
-		_orb = cv::Ptr<CV_ORB>(new CV_ORB(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
-#else
-		_orb = CV_ORB::create(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
-#endif
+		if(gpu_)
+		{
+			UWARN("GPU version of ORB not available! Using CPU version instead...");
+		}
+		_orb = new cv::ORB(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
 	}
 }
 
@@ -726,17 +704,10 @@ std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, cons
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat imgRoi(image, roi);
-
-	if(gpu_)
+	if(_gpuOrb)
 	{
-#if CV_MAJOR_VERSION < 3
 		cv::gpu::GpuMat imgGpu(imgRoi);
-		(*_gpuOrb.obj)(imgGpu, cv::gpu::GpuMat(), keypoints);
-#else
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
+		(*_gpuOrb)(imgGpu, cv::gpu::GpuMat(), keypoints);
 	}
 	else
 	{
@@ -755,19 +726,11 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 		ULOGGER_ERROR("Image is null ?!?");
 		return descriptors;
 	}
-	if(gpu_)
+	if(_gpuOrb)
 	{
-#if CV_MAJOR_VERSION < 3
 		cv::gpu::GpuMat imgGpu(image);
 		cv::gpu::GpuMat descriptorsGPU;
-		(*_gpuOrb.obj)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU);
-#else
-		cv::cuda::GpuMat imgGpu(image);
-		cv::cuda::GpuMat descriptorsGPU;
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
+		(*_gpuOrb)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU);
 
 		// Download descriptors
 		if (descriptorsGPU.empty())
@@ -794,13 +757,23 @@ FAST::FAST(const ParametersMap & parameters) :
 		threshold_(Parameters::defaultFASTThreshold()),
 		nonmaxSuppression_(Parameters::defaultFASTNonmaxSuppression()),
 		gpu_(Parameters::defaultFASTGpu()),
-		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio())
+		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio()),
+		_fast(0),
+		_gpuFast(0)
 {
 	parseParameters(parameters);
 }
 
 FAST::~FAST()
 {
+	if(_fast)
+	{
+		delete _fast;
+	}
+	if(_gpuFast)
+	{
+		delete _gpuFast;
+	}
 }
 
 void FAST::parseParameters(const ParametersMap & parameters)
@@ -812,48 +785,28 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTGpu(), gpu_);
 	Parameters::parse(parameters, Parameters::kFASTGpuKeypointsRatio(), gpuKeypointsRatio_);
 
-#if CV_MAJOR_VERSION < 3
-	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
+	if(_gpuFast)
 	{
-		UWARN("GPU version of FAST not available! Using CPU version instead...");
-		gpu_ = false;
+		delete _gpuFast;
+		_gpuFast = 0;
 	}
-#else
-	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
+	if(_fast)
 	{
-		UWARN("GPU version of FAST not available! Using CPU version instead...");
-		gpu_ = false;
+		delete _fast;
+		_fast = 0;
 	}
-#ifndef HAVE_OPENCV_CUDAFEATURES2D
-	if(gpu_)
+
+	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount())
 	{
-		UWARN("GPU version of FAST not available (OpenCV cudafeatures2d module)! Using CPU version instead...");
-		gpu_ = false;
-	}
-#endif
-	if(gpu_)
-	{
-		UWARN("GPU version of FAST is available but not yet implemented! Using CPU version instead...");
-	}
-	gpu_ = false;
-#endif
-	if(gpu_)
-	{
-#if CV_MAJOR_VERSION < 3
-		_gpuFast = new CV_FAST_GPU(threshold_, nonmaxSuppression_, gpuKeypointsRatio_);
-#else
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
+		_gpuFast = new cv::gpu::FAST_GPU(threshold_, nonmaxSuppression_, gpuKeypointsRatio_);
 	}
 	else
 	{
-#if CV_MAJOR_VERSION < 3
-		_fast = cv::Ptr<CV_FAST>(new CV_FAST(threshold_, nonmaxSuppression_));
-#else
-		_fast = CV_FAST::create(threshold_, nonmaxSuppression_);
-#endif
+		if(gpu_)
+		{
+			UWARN("GPU version of FAST not available! Using CPU version instead...");
+		}
+		_fast = new cv::FastFeatureDetector(threshold_, nonmaxSuppression_);
 	}
 }
 
@@ -862,16 +815,10 @@ std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, con
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat imgRoi(image, roi);
-	if(gpu_)
+	if(_gpuFast)
 	{
-#if CV_MAJOR_VERSION < 3
 		cv::gpu::GpuMat imgGpu(imgRoi);
-		(*_gpuFast.obj)(imgGpu, cv::gpu::GpuMat(), keypoints);
-#else
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
+		(*_gpuFast)(imgGpu, cv::gpu::GpuMat(), keypoints);
 	}
 	else
 	{
@@ -885,13 +832,18 @@ std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, con
 //////////////////////////
 FAST_BRIEF::FAST_BRIEF(const ParametersMap & parameters) :
 	FAST(parameters),
-	bytes_(Parameters::defaultBRIEFBytes())
+	bytes_(Parameters::defaultBRIEFBytes()),
+	_brief(0)
 {
 	parseParameters(parameters);
 }
 
 FAST_BRIEF::~FAST_BRIEF()
 {
+	if(_brief)
+	{
+		delete _brief;
+	}
 }
 
 void FAST_BRIEF::parseParameters(const ParametersMap & parameters)
@@ -899,30 +851,19 @@ void FAST_BRIEF::parseParameters(const ParametersMap & parameters)
 	FAST::parseParameters(parameters);
 
 	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes_);
-#if CV_MAJOR_VERSION < 3
-	_brief = cv::Ptr<CV_BRIEF>(new CV_BRIEF(bytes_));
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_brief = CV_BRIEF::create(bytes_);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Brief cannot be used!");
-#endif
-#endif
+	if(_brief)
+	{
+		delete _brief;
+		_brief = 0;
+	}
+	_brief = new cv::BriefDescriptorExtractor(bytes_);
 }
 
 cv::Mat FAST_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
 	_brief->compute(image, keypoints, descriptors);
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_brief->compute(image, keypoints, descriptors);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Brief cannot be used!");
-#endif
-#endif
 	return descriptors;
 }
 
@@ -934,13 +875,18 @@ FAST_FREAK::FAST_FREAK(const ParametersMap & parameters) :
 	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
 	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
 	patternScale_(Parameters::defaultFREAKPatternScale()),
-	nOctaves_(Parameters::defaultFREAKNOctaves())
+	nOctaves_(Parameters::defaultFREAKNOctaves()),
+	_freak(0)
 {
 	parseParameters(parameters);
 }
 
 FAST_FREAK::~FAST_FREAK()
 {
+	if(_freak)
+	{
+		delete _freak;
+	}
 }
 
 void FAST_FREAK::parseParameters(const ParametersMap & parameters)
@@ -952,30 +898,20 @@ void FAST_FREAK::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
 	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
 
-#if CV_MAJOR_VERSION < 3
-	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
-#endif
+	if(_freak)
+	{
+		delete _freak;
+		_freak = 0;
+	}
+
+	_freak = new cv::FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
 }
 
 cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
 	_freak->compute(image, keypoints, descriptors);
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak->compute(image, keypoints, descriptors);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
-#endif
 	return descriptors;
 }
 
@@ -988,13 +924,18 @@ GFTT::GFTT(const ParametersMap & parameters) :
 		_minDistance(Parameters::defaultGFTTMinDistance()),
 		_blockSize(Parameters::defaultGFTTBlockSize()),
 		_useHarrisDetector(Parameters::defaultGFTTUseHarrisDetector()),
-		_k(Parameters::defaultGFTTK())
+		_k(Parameters::defaultGFTTK()),
+		_gftt(0)
 {
 	parseParameters(parameters);
 }
 
 GFTT::~GFTT()
 {
+	if(_gftt)
+	{
+		delete _gftt;
+	}
 }
 
 void GFTT::parseParameters(const ParametersMap & parameters)
@@ -1008,11 +949,12 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGFTTUseHarrisDetector(), _useHarrisDetector);
 	Parameters::parse(parameters, Parameters::kGFTTK(), _k);
 
-#if CV_MAJOR_VERSION < 3
-	_gftt = cv::Ptr<CV_GFTT>(new CV_GFTT(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k));
-#else
-	_gftt = CV_GFTT::create(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
-#endif
+	if(_gftt)
+	{
+		delete _gftt;
+		_gftt = 0;
+	}
+	_gftt = new cv::GFTTDetector(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
 }
 
 std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
@@ -1029,13 +971,18 @@ std::vector<cv::KeyPoint> GFTT::generateKeypointsImpl(const cv::Mat & image, con
 //////////////////////////
 GFTT_BRIEF::GFTT_BRIEF(const ParametersMap & parameters) :
 	GFTT(parameters),
-	bytes_(Parameters::defaultBRIEFBytes())
+	bytes_(Parameters::defaultBRIEFBytes()),
+	_brief(0)
 {
 	parseParameters(parameters);
 }
 
 GFTT_BRIEF::~GFTT_BRIEF()
 {
+	if(_brief)
+	{
+		delete _brief;
+	}
 }
 
 void GFTT_BRIEF::parseParameters(const ParametersMap & parameters)
@@ -1043,30 +990,19 @@ void GFTT_BRIEF::parseParameters(const ParametersMap & parameters)
 	GFTT::parseParameters(parameters);
 
 	Parameters::parse(parameters, Parameters::kBRIEFBytes(), bytes_);
-#if CV_MAJOR_VERSION < 3
-	_brief = cv::Ptr<CV_BRIEF>(new CV_BRIEF(bytes_));
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_brief = CV_BRIEF::create(bytes_);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Brief cannot be used!");
-#endif
-#endif
+	if(_brief)
+	{
+		delete _brief;
+		_brief = 0;
+	}
+	_brief = new cv::BriefDescriptorExtractor(bytes_);
 }
 
 cv::Mat GFTT_BRIEF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
 	_brief->compute(image, keypoints, descriptors);
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_brief->compute(image, keypoints, descriptors);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Brief cannot be used!");
-#endif
-#endif
 	return descriptors;
 }
 
@@ -1078,13 +1014,18 @@ GFTT_FREAK::GFTT_FREAK(const ParametersMap & parameters) :
 	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
 	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
 	patternScale_(Parameters::defaultFREAKPatternScale()),
-	nOctaves_(Parameters::defaultFREAKNOctaves())
+	nOctaves_(Parameters::defaultFREAKNOctaves()),
+	_freak(0)
 {
 	parseParameters(parameters);
 }
 
 GFTT_FREAK::~GFTT_FREAK()
 {
+	if(_freak)
+	{
+		delete _freak;
+	}
 }
 
 void GFTT_FREAK::parseParameters(const ParametersMap & parameters)
@@ -1096,30 +1037,20 @@ void GFTT_FREAK::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
 	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
 
-#if CV_MAJOR_VERSION < 3
-	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
-#endif
+	if(_freak)
+	{
+		delete _freak;
+		_freak = 0;
+	}
+
+	_freak = new cv::FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
 }
 
 cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
 	_freak->compute(image, keypoints, descriptors);
-#else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak->compute(image, keypoints, descriptors);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
-#endif
 	return descriptors;
 }
 
@@ -1129,13 +1060,18 @@ cv::Mat GFTT_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 BRISK::BRISK(const ParametersMap & parameters) :
 	thresh_(Parameters::defaultBRISKThresh()),
 	octaves_(Parameters::defaultBRISKOctaves()),
-	patternScale_(Parameters::defaultBRISKPatternScale())
+	patternScale_(Parameters::defaultBRISKPatternScale()),
+	brisk_(0)
 {
 	parseParameters(parameters);
 }
 
 BRISK::~BRISK()
 {
+	if(brisk_)
+	{
+		delete brisk_;
+	}
 }
 
 void BRISK::parseParameters(const ParametersMap & parameters)
@@ -1146,11 +1082,13 @@ void BRISK::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kBRISKOctaves(), octaves_);
 	Parameters::parse(parameters, Parameters::kBRISKPatternScale(), patternScale_);
 
-#if CV_MAJOR_VERSION < 3
-	brisk_ = cv::Ptr<CV_BRISK>(new CV_BRISK(thresh_, octaves_, patternScale_));
-#else
-	brisk_ = CV_BRISK::create(thresh_, octaves_, patternScale_);
-#endif
+	if(brisk_)
+	{
+		delete brisk_;
+		brisk_ = 0;
+	}
+
+	brisk_ = new cv::BRISK(thresh_, octaves_, patternScale_);
 }
 
 std::vector<cv::KeyPoint> BRISK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const
